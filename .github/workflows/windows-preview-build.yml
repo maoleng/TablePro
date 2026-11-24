@@ -94,9 +94,10 @@ jobs:
           SkipCoreBuild: "true"
           CargoProfile: dev
         run: |
+          trap 'status=$?; if [ "$status" -ne 0 ]; then tail -n 70 .analysis/windows-preview-build/logs/*.log; fi' EXIT
           .claude/skills/fix-issue/scripts/verify.sh --platform windows build
-          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Model.Tests
-          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Tests
+          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Model.Tests -- --no-ansi --no-progress
+          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Tests -- --no-ansi --no-progress
 
       - name: Publish the app
         working-directory: windows
