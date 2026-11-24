@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
   build:
@@ -61,56 +60,6 @@ jobs:
             target/x86_64-pc-windows-msvc/debug/tablepro_ffi.dll
             target/x86_64-pc-windows-msvc/debug/tablepro-cli.exe
           key: ${{ steps.core-inputs.outputs.key }}
-
-      # The first preview was built before this cache existed.
-      - name: Check the first preview's Rust inputs
-        if: steps.core-cache.outputs.cache-hit != 'true' && github.repository == 'maoleng/TablePro'
-        id: seed-inputs
-        run: |
-          $paths = $env:CORE_INPUT_PATHS -split '\s+'
-          $compiler = rustc --version
-          if ($LASTEXITCODE -ne 0 -or $compiler -notlike 'rustc 1.98.1 (48a229cea *' -or
-              $env:CARGO_PROFILE_DEV_DEBUG -ne '0' -or $env:AWS_LC_SYS_PREBUILT_NASM -ne '1' -or $env:RUSTFLAGS) {
-            return
-          }
-          $source = '26f0b05d5f1ed3cec51fa79f526d263d531b1028'
-          git fetch --no-tags --depth=1 origin $source
-          if ($LASTEXITCODE -ne 0) { return }
-          git diff --quiet $source HEAD -- @paths
-          if ($LASTEXITCODE -eq 0) { 'matches=true' >> $env:GITHUB_OUTPUT }
-          exit 0
-
-      - name: Download the first preview
-        if: steps.seed-inputs.outputs.matches == 'true'
-        id: seed-artifact
-        continue-on-error: true
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: tablepro-windows-preview-x64
-          path: ${{ runner.temp }}/tablepro-core-seed
-          github-token: ${{ github.token }}
-          run-id: 45480589233
-
-      - name: Verify and reuse the first preview's Rust binaries
-        if: steps.seed-artifact.outcome == 'success'
-        run: |
-          $seed = Join-Path $env:RUNNER_TEMP 'tablepro-core-seed'
-          $info = Get-Content -LiteralPath (Join-Path $seed 'build-info.json') -Raw | ConvertFrom-Json
-          if ($info.source -ne $env:GITHUB_REPOSITORY -or $info.platform -ne 'win-x64' -or
-              $info.commit -ne '26f0b05d5f1ed3cec51fa79f526d263d531b1028') {
-            throw 'The seed artifact does not match the first preview'
-          }
-          $files = 'tablepro_ffi.dll', 'tablepro-cli.exe'
-          foreach ($name in $files) {
-            $entry = @($info.files | Where-Object path -eq $name)
-            $file = Join-Path $seed $name
-            if ($entry.Count -ne 1 -or (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash -ne $entry[0].sha256) {
-              throw "Seed checksum mismatch: $name"
-            }
-          }
-          New-Item -ItemType Directory -Path $env:CORE_DIRECTORY -Force | Out-Null
-          foreach ($name in $files) { Copy-Item -LiteralPath (Join-Path $seed $name) -Destination $env:CORE_DIRECTORY }
-          Write-Host 'Reused both Rust binaries from the first preview'
 
       - name: Build the Rust core
         working-directory: windows
