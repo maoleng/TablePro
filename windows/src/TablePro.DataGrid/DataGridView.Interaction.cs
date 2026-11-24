@@ -9,6 +9,8 @@ using TablePro.Graphics;
 using Windows.Foundation;
 using Windows.System;
 using Windows.UI.Core;
+using static TerraFX.Interop.Windows.SPI;
+using static TerraFX.Interop.Windows.Windows;
 
 namespace TablePro.DataGrid;
 
@@ -414,9 +416,10 @@ public sealed partial class DataGridView
         e.Handled = true;
     }
 
-    internal void ScrollWheel(int wheelDelta, bool horizontal, bool nativeHorizontal = false)
+    internal unsafe void ScrollWheel(int wheelDelta, bool horizontal, bool nativeHorizontal = false)
     {
-        var lines = _settings.MouseWheelScrollLines;
+        uint lines = 3;
+        SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &lines, 0);
         var distance = lines == uint.MaxValue
             ? (horizontal ? VisibleArea().Width : VisibleArea().Height)
             : lines * _rowHeight;
