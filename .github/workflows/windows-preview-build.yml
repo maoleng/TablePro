@@ -89,17 +89,14 @@ jobs:
           key: ${{ steps.core-inputs.outputs.key }}
 
       - name: Test the data grid
-        working-directory: windows
+        shell: bash
         env:
           SkipCoreBuild: "true"
           CargoProfile: dev
         run: |
-          dotnet build TablePro.slnx
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test --project tests/TablePro.DataGrid.Model.Tests
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet test --project tests/TablePro.DataGrid.Tests
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .claude/skills/fix-issue/scripts/verify.sh --platform windows build
+          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Model.Tests
+          .claude/skills/fix-issue/scripts/verify.sh --platform windows test TablePro.DataGrid.Tests
 
       - name: Publish the app
         working-directory: windows

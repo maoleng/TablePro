@@ -435,6 +435,7 @@ public sealed partial class DataGridView
             y -= delta;
         }
         ScrollTo(x, y);
+        _scroller.UpdateLayout();
     }
 
     // The panes see the request before the host's handler on the grid; a key's request has no position.

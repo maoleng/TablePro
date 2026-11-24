@@ -884,10 +884,16 @@ public sealed partial class DataGridView : UserControl, IGridWindow
         y = Math.Clamp(y, 0, Math.Max(0, _scroller.ScrollableHeight));
         _held = null;
         Follow(x, y);
-        // Wrapped rows measured on the way in may have moved the offset; this call hands it over itself.
+        var targetX = _viewX;
+        var targetY = _viewY;
+        // Measuring buffered wrapped rows can grow the extent past the ScrollViewer's current maximum.
+        if (_unsynced)
+        {
+            _scroller.UpdateLayout();
+        }
         _held = null;
         _unsynced = false;
-        _scroller.ChangeView(_viewX, _viewY, null, true);
+        _scroller.ChangeView(targetX, targetY, null, true);
     }
 
     private void Follow(double x, double y)
