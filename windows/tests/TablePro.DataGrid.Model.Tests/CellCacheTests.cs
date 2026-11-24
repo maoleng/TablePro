@@ -5,6 +5,28 @@ namespace TablePro.DataGrid.Model.Tests;
 public sealed class CellCacheTests
 {
     [Fact]
+    public void ValueTypesSurviveBlockCopiesAndResetWhenTheBlockIsReused()
+    {
+        var source = new CellBlock();
+        source.Reset(0, 1, 0, 6, 64);
+        foreach (var kind in Enum.GetValues<CellValueType>())
+        {
+            source.Add("42"u8, truncated: false, valueType: kind);
+        }
+        var copy = new CellBlock();
+        copy.Reset(0, 1, 0, 6, 64);
+        for (var column = 0; column < 6; column++)
+        {
+            copy.Add(source.Get(0, column), CellState.Modified);
+            Assert.Equal((CellValueType)column, copy.Get(0, column).ValueType);
+            Assert.Equal(CellState.Modified, copy.Get(0, column).State);
+        }
+        copy.Reset(0, 1, 0, 1, 64);
+        copy.Add("42", truncated: false);
+        Assert.Equal(CellValueType.Text, copy.Get(0, 0).ValueType);
+    }
+
+    [Fact]
     public void ABlockDecodesUtf8AndMarksNullCutAndRightToLeftCells()
     {
         var block = new CellBlock();

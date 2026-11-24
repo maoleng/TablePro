@@ -37,7 +37,7 @@
 
 - A ScrollViewer holds four regions: the scrolling columns as content, their header row in `TopHeader`, the row numbers and frozen columns in `LeftHeader`, and their headers in `TopLeftHeader`. The headers need the content aligned left and top.
 - `LeftHeader` lies over the content, which scrolls under it, so the frozen pane paints the grid's background.
-- In each pane an ItemsRepeater realizes the rows in view through `RowsLayout`; the header row realizes the scrolling columns in view through `HeaderLayout`. Rows are arranged against an origin that moves in steps of 4,096 px, so arrange coordinates stay small in a 32M px grid.
+- In each pane an ItemsRepeater realizes the rows in view and one viewport above and below through `RowsLayout`; the header row realizes the scrolling columns in view through `HeaderLayout`. Rows are arranged against an origin that moves in steps of 4,096 px, so arrange coordinates stay small in a 32M px grid.
 - The five traps, each with a test in `tests/TablePro.DataGrid.Tests/ItemsRepeaterTrapTests.cs`:
   1. **Auto-recycle.** `ViewManager::GetElement` marks each element a layout gets for recycling unless the layout asks for it again in the same pass. The layouts keep elements across passes, so they pass `SuppressAutoRecycle`; without it one element served two rows.
   2. **The 10,000 px viewport.** `ViewportManager::UpdateViewport` takes an effective viewport past x and y 10,000 as cleared. The layouts take their windows from the grid's own scroll state, not `context.RealizationRect`, and the grid invalidates them on each scroll.
@@ -46,6 +46,10 @@
   5. **A new source.** Replacing the items left the elements the layouts held where they were, drawing the old rows under the new ones; the app's sorted results showed it. `SetData` hands the old elements to the layouts, which recycle them on the next measure.
 
 ### Drawing
+
+- The core's value kind travels with the cached display text and pending edits. Numbers, booleans, dates and times, structured values and binary values have distinct colors in both themes. NULL and pending-change marks keep their own styling. High contrast uses the system colors.
+- Mouse-wheel scrolling applies each delta without an animation. The distance follows Windows' wheel line setting, Shift scrolls horizontally, and native horizontal deltas retain their direction. Touch manipulation keeps the ScrollViewer's handling.
+
 
 - Each row is one element with a `SpriteVisual` painted from a `CompositionDrawingSurface` the width of the pane's visible columns. `TablePro.Graphics.SurfaceDevice` makes the composition graphics device from a Direct2D device through Windows App SDK's `ICompositorInterop`, whose IIDs and layout differ from the system's; a draw gets the surface's own device context through `ICompositionDrawingSurfaceInterop::BeginDraw`.
 - A row keeps an `IDWriteTextLayout` per visible cell while it stays on screen, and lays out only the columns that come into view. Layouts are made from the block's spans: no string, wrapper or closure per cell.

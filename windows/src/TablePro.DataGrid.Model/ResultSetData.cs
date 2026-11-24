@@ -71,13 +71,25 @@ public sealed class ResultSetData : IGridData
                         {
                             text = text[..^1];
                         }
-                        block.Add(text, truncated, lossy);
+                        block.Add(text, truncated, lossy, TypeOf(window.GetKind(row, column)));
                     }
                 }
             }
         }
 
         public string? ReadWhole(int row, int column) => set.GetCellText(row, column);
+
+        internal static CellValueType TypeOf(ValueKind kind) => kind switch
+        {
+            ValueKind.Bool => CellValueType.Boolean,
+            ValueKind.Integer or ValueKind.UnsignedInteger or ValueKind.WideInteger
+                or ValueKind.Float or ValueKind.Decimal => CellValueType.Number,
+            ValueKind.Date or ValueKind.Time or ValueKind.TimeWithOffset or ValueKind.Timestamp
+                or ValueKind.TimestampWithOffset or ValueKind.Interval => CellValueType.Temporal,
+            ValueKind.Json or ValueKind.Array or ValueKind.Xml => CellValueType.Structured,
+            ValueKind.Bytes or ValueKind.Bits => CellValueType.Binary,
+            _ => CellValueType.Text,
+        };
 
         // Kinds the core formats itself hold no control characters; the others are the value's own text.
         private static bool IsText(ValueKind kind) => kind is not (ValueKind.Bool or ValueKind.Integer

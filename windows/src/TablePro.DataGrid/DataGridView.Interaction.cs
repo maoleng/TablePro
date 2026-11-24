@@ -385,6 +385,8 @@ public sealed partial class DataGridView
 
     private void InitializeInput()
     {
+        _content.PointerWheelChanged += OnGridWheel;
+        _frozenContent.PointerWheelChanged += OnGridWheel;
         _content.PointerPressed += (_, e) => OnPanePressed(e, frozen: false);
         _frozenContent.PointerPressed += (_, e) => OnPanePressed(e, frozen: true);
         _content.PointerMoved += (_, e) => OnPaneMoved(e, frozen: false);
@@ -397,6 +399,39 @@ public sealed partial class DataGridView
         _frozenContent.DoubleTapped += (_, e) => OnPaneDoubleTapped(e, frozen: true);
         _content.ContextRequested += (_, e) => OnPaneContextRequested(e, frozen: false);
         _frozenContent.ContextRequested += (_, e) => OnPaneContextRequested(e, frozen: true);
+    }
+
+    // Wheel input moves immediately, so a new notch never waits for the previous animation to finish.
+    private void OnGridWheel(object sender, PointerRoutedEventArgs e)
+    {
+        if (e.Handled || IsInEditor(e.OriginalSource) || RowCount == 0 || IsDown(VirtualKey.Control))
+        {
+            return;
+        }
+        var properties = e.GetCurrentPoint(_scroller).Properties;
+        var horizontal = properties.IsHorizontalMouseWheel || IsDown(VirtualKey.Shift);
+        ScrollWheel(properties.MouseWheelDelta, horizontal, properties.IsHorizontalMouseWheel);
+        e.Handled = true;
+    }
+
+    internal void ScrollWheel(int wheelDelta, bool horizontal, bool nativeHorizontal = false)
+    {
+        var lines = _settings.MouseWheelScrollLines;
+        var distance = lines == uint.MaxValue
+            ? (horizontal ? VisibleArea().Width : VisibleArea().Height)
+            : lines * _rowHeight;
+        var delta = wheelDelta / 120.0 * distance;
+        var x = _viewX;
+        var y = _viewY;
+        if (horizontal)
+        {
+            x += nativeHorizontal ? delta : -delta;
+        }
+        else
+        {
+            y -= delta;
+        }
+        ScrollTo(x, y);
     }
 
     // The panes see the request before the host's handler on the grid; a key's request has no position.

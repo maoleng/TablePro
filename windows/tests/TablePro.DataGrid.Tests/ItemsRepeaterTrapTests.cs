@@ -6,6 +6,29 @@ namespace TablePro.DataGrid.Tests;
 // ItemsRepeater traps that broke the grid silently (wingates2 SPIKE.md, the app's sort); each fails without its fix.
 public sealed class ItemsRepeaterTrapTests
 {
+    [Fact]
+    public Task RowsAboveAndBelowTheViewAreAlreadyDrawn() => WinUiHost.RunAsync(async () =>
+    {
+        var data = new SyntheticData();
+        var grid = await WinUiHost.ShowAsync(data, frozen: 1);
+        await GridChecks.JumpAsync(grid, 0, 20_000);
+        var visible = grid.RowWindow;
+        var buffered = grid.BufferedRowWindow;
+        Assert.True(buffered.First < visible.First);
+        Assert.True(buffered.Last > visible.Last);
+        Assert.True(grid.RowTop(buffered.First) <= grid.VisibleArea().Top - grid.VisibleArea().Height);
+        Assert.True(grid.RowTop(buffered.Last) + grid.RowHeight >= grid.VisibleArea().Bottom + grid.VisibleArea().Height);
+        foreach (var rows in new[] { grid.RealizedRows, grid.RealizedFrozenRows })
+        {
+            for (var row = buffered.First; row <= buffered.Last; row++)
+            {
+                Assert.Equal(row, ((DrawnRow)rows[row]).DrawnRowIndex);
+            }
+        }
+        var problems = GridChecks.Check(grid, data);
+        Assert.True(problems.None, problems.ToString());
+    });
+
     // Without SuppressAutoRecycle one element served two rows and headers went blank.
     [Fact]
     public Task NoElementServesTwoRowsAcrossManyLayoutPasses() => WinUiHost.RunAsync(async () =>
@@ -24,8 +47,8 @@ public sealed class ItemsRepeaterTrapTests
         Assert.Equal(0, grid.DuplicateRecycles);
         var problems = GridChecks.Check(grid, data);
         Assert.True(problems.None, problems.ToString());
-        var visibleRows = (int)Math.Ceiling(grid.VisibleArea().Height / grid.RowHeight) + 1;
-        Assert.InRange(grid.RowElementsCreated, 1, 2 * (visibleRows + 2));
+        var bufferedRows = (int)Math.Ceiling(grid.VisibleArea().Height * 3 / grid.RowHeight) + 1;
+        Assert.InRange(grid.RowElementsCreated, 1, 2 * (bufferedRows + 2));
     });
 
     // A layout reading context.RealizationRect stopped measuring past x and y 10,000 (ViewportManager::UpdateViewport).
@@ -56,16 +79,16 @@ public sealed class ItemsRepeaterTrapTests
         var data = new SyntheticData();
         var grid = await WinUiHost.ShowAsync(data);
         var random = new Random(5);
-        var visibleRows = (int)Math.Ceiling(grid.VisibleArea().Height / grid.RowHeight) + 1;
+        var bufferedRows = (int)Math.Ceiling(grid.VisibleArea().Height * 3 / grid.RowHeight) + 1;
         for (var jump = 0; jump < 100; jump++)
         {
             var requested = grid.Counters.Layout.ElementsRequested;
             await GridChecks.JumpAsync(grid, random.NextDouble() * grid.Scroller.ScrollableWidth,
                 random.NextDouble() * grid.Scroller.ScrollableHeight);
-            AssertContiguous(grid.RealizedRows.Keys, visibleRows);
-            AssertContiguous(grid.RealizedFrozenRows.Keys, visibleRows);
+            AssertContiguous(grid.RealizedRows.Keys, bufferedRows);
+            AssertContiguous(grid.RealizedFrozenRows.Keys, bufferedRows);
             AssertContiguous(grid.RealizedHeaders.Keys, 13);
-            Assert.InRange((int)(grid.Counters.Layout.ElementsRequested - requested), 0, visibleRows);
+            Assert.InRange((int)(grid.Counters.Layout.ElementsRequested - requested), 0, bufferedRows);
         }
     });
 
@@ -93,7 +116,7 @@ public sealed class ItemsRepeaterTrapTests
     });
 
     [Fact]
-    public Task RealizedCellsStayWithinTheViewport() => WinUiHost.RunAsync(async () =>
+    public Task RealizedCellsStayWithinTheBufferedViewport() => WinUiHost.RunAsync(async () =>
     {
         var data = new SyntheticData();
         var grid = await WinUiHost.ShowAsync(data, frozen: 2);
@@ -163,7 +186,7 @@ public sealed class ItemsRepeaterTrapTests
     {
         var grid = await WrapChecks.ShowAsync(new WrapData(rows: 100_000), frozen: 1);
         var random = new Random(3);
-        var visibleRows = (int)Math.Ceiling(grid.VisibleArea().Height / grid.RowHeight) + 1;
+        var bufferedRows = (int)Math.Ceiling(grid.VisibleArea().Height * 3 / grid.RowHeight) + 1;
         for (var jump = 0; jump < 60; jump++)
         {
             await GridChecks.JumpAsync(grid, random.NextDouble() * grid.Scroller.ScrollableWidth,
@@ -171,12 +194,12 @@ public sealed class ItemsRepeaterTrapTests
             Assert.Equal(grid.RealizedRows.Count, grid.RealizedRows.Values.Distinct().Count());
             Assert.Equal(grid.RealizedFrozenRows.Count, grid.RealizedFrozenRows.Values.Distinct().Count());
             Assert.Equal(grid.RealizedHeaders.Count, grid.RealizedHeaders.Values.Distinct().Count());
-            AssertContiguous(grid.RealizedRows.Keys, visibleRows);
-            AssertContiguous(grid.RealizedFrozenRows.Keys, visibleRows);
+            AssertContiguous(grid.RealizedRows.Keys, bufferedRows);
+            AssertContiguous(grid.RealizedFrozenRows.Keys, bufferedRows);
             WrapChecks.AssertPlaced(grid, $"jump {jump}");
         }
         Assert.Equal(0, grid.DuplicateRecycles);
-        Assert.InRange(grid.RowElementsCreated, 1, 2 * (visibleRows + 2));
+        Assert.InRange(grid.RowElementsCreated, 1, 2 * (bufferedRows + 2));
     });
 
     // Trap 2 with rows of uneven height.

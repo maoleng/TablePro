@@ -35,11 +35,23 @@ public enum CellState : ushort
     Unreadable = 512,
 }
 
-public readonly ref struct CellText(ReadOnlySpan<char> text, CellState state)
+public enum CellValueType : byte
+{
+    Text,
+    Number,
+    Boolean,
+    Temporal,
+    Structured,
+    Binary,
+}
+
+public readonly ref struct CellText(ReadOnlySpan<char> text, CellState state, CellValueType valueType = CellValueType.Text)
 {
     public ReadOnlySpan<char> Text { get; } = text;
 
     public CellState State { get; } = state;
+
+    public CellValueType ValueType { get; } = valueType;
 
     public bool IsNull => (State & CellState.Null) != 0;
 
@@ -58,6 +70,7 @@ public sealed class CellBlock
     private char[] _chars = new char[8192];
     private int[] _starts = new int[1];
     private CellState[] _flags = [];
+    private CellValueType[] _types = [];
     private int _length;
     private int _cells;
 
@@ -93,6 +106,7 @@ public sealed class CellBlock
         {
             _starts = new int[cells + 1];
             _flags = new CellState[cells];
+            _types = new CellValueType[cells];
         }
         _length = 0;
         _cells = 0;
@@ -115,12 +129,13 @@ public sealed class CellBlock
     // Grows the buffer once for a window's text, where adding cell by cell would grow it several times.
     public void EnsureCapacity(int characters) => Reserve(characters - _length, exact: true);
 
-    public void Add(ReadOnlySpan<byte> utf8, bool truncated, bool lossy = false)
+    public void Add(ReadOnlySpan<byte> utf8, bool truncated, bool lossy = false,
+        CellValueType valueType = CellValueType.Text)
     {
         Reserve(Encoding.UTF8.GetMaxCharCount(utf8.Length) + 1);
         var start = _length;
         _length += Encoding.UTF8.GetChars(utf8, _chars.AsSpan(_length));
-        Finish(start, truncated, lossy, CellState.None);
+        Finish(start, truncated, lossy, CellState.None, valueType);
     }
 
     // A cell another block already read, copied as it is, with the marks added.
@@ -129,7 +144,7 @@ public sealed class CellBlock
         Reserve(cell.Text.Length);
         cell.Text.CopyTo(_chars.AsSpan(_length));
         _length += cell.Text.Length;
-        Close(cell.State | marks);
+        Close(cell.State | marks, cell.ValueType);
     }
 
     public void Add(ReadOnlySpan<char> text, bool truncated, bool lossy = false)
@@ -142,7 +157,7 @@ public sealed class CellBlock
     }
 
     // Text the user typed, shown as the core shows a value: cut at the cap, control characters and breaks as spaces.
-    public void AddTyped(ReadOnlySpan<char> text, CellState marks)
+    public void AddTyped(ReadOnlySpan<char> text, CellState marks, CellValueType valueType = CellValueType.Text)
     {
         var cut = MaxCharacters > 0 && text.Length > MaxCharacters;
         if (cut)
@@ -176,7 +191,7 @@ public sealed class CellBlock
         {
             _length = start + TrimLastBreak(_chars.AsSpan(start, _length - start)).Length;
         }
-        Finish(start, cut, lossy, marks);
+        Finish(start, cut, lossy, marks, valueType);
     }
 
     // The forms every TablePro grid breaks a line at: LF, VT, FF, CR, NEL and the line and paragraph separators.
@@ -196,10 +211,11 @@ public sealed class CellBlock
             return new CellText([], CellState.Missing);
         }
         var start = _starts[cell];
-        return new CellText(_chars.AsSpan(start, _starts[cell + 1] - start), _flags[cell]);
+        return new CellText(_chars.AsSpan(start, _starts[cell + 1] - start), _flags[cell], _types[cell]);
     }
 
-    private void Finish(int start, bool truncated, bool lossy, CellState marks)
+    private void Finish(int start, bool truncated, bool lossy, CellState marks,
+        CellValueType valueType = CellValueType.Text)
     {
         var flags = marks;
         if (TextDirection.IsRightToLeft(_chars.AsSpan(start, _length - start)))
@@ -215,16 +231,17 @@ public sealed class CellBlock
             _chars[_length++] = Ellipsis;
             flags |= CellState.Truncated;
         }
-        Close(flags);
+        Close(flags, valueType);
     }
 
-    private void Close(CellState flags)
+    private void Close(CellState flags, CellValueType valueType = CellValueType.Text)
     {
         if (_cells >= _flags.Length)
         {
             throw new InvalidOperationException("The block holds the cells Reset asked for.");
         }
         _flags[_cells] = flags;
+        _types[_cells] = valueType;
         _cells++;
         _starts[_cells] = _length;
     }

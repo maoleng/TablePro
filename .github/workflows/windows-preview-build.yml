@@ -88,6 +88,19 @@ jobs:
             target/x86_64-pc-windows-msvc/debug/tablepro-cli.exe
           key: ${{ steps.core-inputs.outputs.key }}
 
+      - name: Test the data grid
+        working-directory: windows
+        env:
+          SkipCoreBuild: "true"
+          CargoProfile: dev
+        run: |
+          dotnet build TablePro.slnx -p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet test --project tests/TablePro.DataGrid.Model.Tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet test --project tests/TablePro.DataGrid.Tests
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Publish the app
         working-directory: windows
         run: |

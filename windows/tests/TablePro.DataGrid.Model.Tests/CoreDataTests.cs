@@ -14,6 +14,20 @@ public sealed class CoreDataTests
         "UNION ALL SELECT 5, 'tab' || char(9) || 'and \"quote\"', 'plain'";
 
     [Fact]
+    public async Task ValueColorsFollowTheDriversKindsRatherThanTheDisplayedText()
+    {
+        await using var database = await CoreDatabase.CreateAsync();
+        using var data = await database.QueryAsync(
+            "SELECT 42 AS number, 1.25 AS fraction, '42' AS text, X'1234' AS bytes, NULL AS empty");
+        using var cache = new CellCache(data.Data.OpenReader());
+        Assert.Equal(CellValueType.Number, cache.Get(0, 0, 64).ValueType);
+        Assert.Equal(CellValueType.Number, cache.Get(0, 1, 64).ValueType);
+        Assert.Equal(CellValueType.Text, cache.Get(0, 2, 64).ValueType);
+        Assert.Equal(CellValueType.Binary, cache.Get(0, 3, 64).ValueType);
+        Assert.True(cache.Get(0, 4, 64).IsNull);
+    }
+
+    [Fact]
     public async Task CellsReadBackWithNullCutRightToLeftAndLossyMarks()
     {
         await using var database = await CoreDatabase.CreateAsync();

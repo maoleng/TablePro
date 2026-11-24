@@ -29,6 +29,11 @@ internal enum CellInk : byte
     RowNumber,
     Default,
     Deleted,
+    Number,
+    Boolean,
+    Temporal,
+    Structured,
+    Binary,
 }
 
 // Matches a TextBlock cell: XAML's font or the host's, its size times the text scale, one line cut with an ellipsis.
@@ -56,6 +61,11 @@ internal sealed unsafe class CellPainter : IDisposable
     private IDWriteInlineObject* _defaultEllipsis;
     private ID2D1SolidColorBrush* _textBrush;
     private ID2D1SolidColorBrush* _placeholderBrush;
+    private ID2D1SolidColorBrush* _numericBrush;
+    private ID2D1SolidColorBrush* _booleanBrush;
+    private ID2D1SolidColorBrush* _temporalBrush;
+    private ID2D1SolidColorBrush* _structuredBrush;
+    private ID2D1SolidColorBrush* _binaryBrush;
     private ID2D1SolidColorBrush* _cutMarkBrush;
     private ID2D1SolidColorBrush* _rowNumberBrush;
     private ID2D1SolidColorBrush* _dividerBrush;
@@ -172,6 +182,11 @@ internal sealed unsafe class CellPainter : IDisposable
         ReleaseBrushes();
         var context = _device.Resources;
         _textBrush = Brush(context, _colors.Text);
+        _numericBrush = Brush(context, _colors.Number);
+        _booleanBrush = Brush(context, _colors.Boolean);
+        _temporalBrush = Brush(context, _colors.Temporal);
+        _structuredBrush = Brush(context, _colors.Structured);
+        _binaryBrush = Brush(context, _colors.Binary);
         _placeholderBrush = Brush(context, _colors.Placeholder);
         _cutMarkBrush = Brush(context, _colors.CutMark);
         _rowNumberBrush = Brush(context, _colors.RowNumber);
@@ -191,6 +206,12 @@ internal sealed unsafe class CellPainter : IDisposable
 
     public ID2D1Brush* InkBrush(CellInk ink, bool selected) => ink switch
     {
+        _ when selected && _colors.HighContrast => (ID2D1Brush*)_selectedTextBrush,
+        CellInk.Number => (ID2D1Brush*)_numericBrush,
+        CellInk.Boolean => (ID2D1Brush*)_booleanBrush,
+        CellInk.Temporal => (ID2D1Brush*)_temporalBrush,
+        CellInk.Structured => (ID2D1Brush*)_structuredBrush,
+        CellInk.Binary => (ID2D1Brush*)_binaryBrush,
         CellInk.Placeholder => (ID2D1Brush*)_placeholderBrush,
         CellInk.RowNumber => (ID2D1Brush*)(selected ? _textBrush : _rowNumberBrush),
         CellInk.Default => (ID2D1Brush*)(selected && _colors.HighContrast ? _selectedTextBrush : _defaultBrush),
@@ -747,6 +768,11 @@ internal sealed unsafe class CellPainter : IDisposable
     private void ReleaseBrushes()
     {
         NativeCom.Release(ref _textBrush);
+        NativeCom.Release(ref _numericBrush);
+        NativeCom.Release(ref _booleanBrush);
+        NativeCom.Release(ref _temporalBrush);
+        NativeCom.Release(ref _structuredBrush);
+        NativeCom.Release(ref _binaryBrush);
         NativeCom.Release(ref _placeholderBrush);
         NativeCom.Release(ref _cutMarkBrush);
         NativeCom.Release(ref _rowNumberBrush);

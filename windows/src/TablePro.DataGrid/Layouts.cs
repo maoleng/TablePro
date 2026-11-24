@@ -11,7 +11,7 @@ namespace TablePro.DataGrid;
 internal interface IGridWindow
 {
     // Rows to realize, as (First, Last); Last < First when none.
-    (int First, int Last) RowWindow { get; }
+    (int First, int Last) BufferedRowWindow { get; }
 
     // Scrolling columns to show, as (First, Last); Last < First when none.
     (int First, int Last) ColumnWindow { get; }
@@ -74,7 +74,7 @@ internal sealed partial class RowsLayout(IGridWindow grid, bool frozen, LayoutCo
             context.RecycleElement(element);
         }
         _replaced.Clear();
-        var (first, last) = grid.RowWindow;
+        var (first, last) = grid.BufferedRowWindow;
         last = Math.Min(last, context.ItemCount - 1);
         _leaving.Clear();
         foreach (var (row, element) in _realized)

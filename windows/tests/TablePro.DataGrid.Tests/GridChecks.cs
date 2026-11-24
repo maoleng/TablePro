@@ -99,11 +99,11 @@ internal static class GridChecks
         return new CellProblems(stale, missing, misplaced, headers, first);
     }
 
-    // Realized cells against what the viewport can show: the visible rows plus one, times the visible columns.
+    // The view and one screen on either side bound the realized rows, even after a random jump.
     public static (int Cells, int Bound) Realized(DataGridView grid)
     {
         var view = grid.VisibleArea();
-        var rows = (int)Math.Ceiling(view.Height / grid.RowHeight) + 1;
+        var rows = (int)Math.Ceiling(view.Height * 3 / grid.RowHeight) + 1;
         var (c0, c1) = grid.Columns.ScrollRange(view.X, view.Width);
         var cells = grid.RealizedRows.Values.Sum(row => ((DrawnRow)row).CellCount)
             + grid.RealizedFrozenRows.Values.Sum(row => ((DrawnRow)row).CellCount);

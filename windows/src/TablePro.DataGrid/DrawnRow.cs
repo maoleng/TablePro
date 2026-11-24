@@ -297,6 +297,18 @@ internal sealed unsafe partial class DrawnRow : Microsoft.UI.Xaml.Controls.Grid
         var layout = wrapped
             ? painter.CreateWrapped(cell.Text, cell.State, width, _grid.RowLines(Row), out ink)
             : painter.CreateLayout(cell.Text, cell.State, width, lineBox, out ink);
+        if (ink == CellInk.Text)
+        {
+            ink = cell.ValueType switch
+            {
+                CellValueType.Number => CellInk.Number,
+                CellValueType.Boolean => CellInk.Boolean,
+                CellValueType.Temporal => CellInk.Temporal,
+                CellValueType.Structured => CellInk.Structured,
+                CellValueType.Binary => CellInk.Binary,
+                _ => CellInk.Text,
+            };
+        }
         if (_cellCount == _cells.Length)
         {
             Array.Resize(ref _cells, _cells.Length * 2);

@@ -10,6 +10,25 @@ namespace TablePro.DataGrid.Tests;
 public sealed class InteractionTests
 {
     [Fact]
+    public Task WheelScrollingMovesImmediatelyAndStopsAtTheEdges() => WinUiHost.RunAsync(async () =>
+    {
+        var grid = await WinUiHost.ShowAsync(new SyntheticData());
+        grid.ScrollTo(0, 20_000);
+        var start = grid.VisibleArea().Top;
+        grid.ScrollWheel(-120, horizontal: false);
+        Assert.True(grid.VisibleArea().Top > start);
+        Assert.Equal(grid.VisibleArea().Top, grid.Scroller.VerticalOffset, 1);
+        grid.ScrollWheel(120, horizontal: false);
+        Assert.Equal(start, grid.VisibleArea().Top, 1);
+        grid.ScrollTo(0, 0);
+        grid.ScrollWheel(120, horizontal: false);
+        Assert.Equal(0, grid.VisibleArea().Top);
+        grid.ScrollWheel(-120, horizontal: true);
+        Assert.True(grid.VisibleArea().Left > 0);
+        Assert.Equal(grid.VisibleArea().Left, grid.Scroller.HorizontalOffset, 1);
+    });
+
+    [Fact]
     public Task KeysMoveTheFocusedCellAndKeepItInView() => WinUiHost.RunAsync(async () =>
     {
         var grid = await WinUiHost.ShowAsync(new SyntheticData());

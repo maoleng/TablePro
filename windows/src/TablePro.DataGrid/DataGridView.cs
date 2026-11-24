@@ -398,6 +398,21 @@ public sealed partial class DataGridView : UserControl, IGridWindow
 
     public (int First, int Last) RowWindow => _rowWindow;
 
+    // A screen on either side keeps the compositor from exposing rows before the UI thread paints them.
+    public (int First, int Last) BufferedRowWindow
+    {
+        get
+        {
+            if (_rowWindow.Last < _rowWindow.First)
+            {
+                return (0, -1);
+            }
+            var visible = VisibleArea();
+            return (Math.Clamp(RowAt(Math.Max(0, _viewY - visible.Height)), 0, RowCount - 1),
+                Math.Clamp(RowAt(_viewY + visible.Height * 2), 0, RowCount - 1));
+        }
+    }
+
     public (int First, int Last) ColumnWindow => _columnWindow;
 
     public double OriginY => _originY;
@@ -895,6 +910,9 @@ public sealed partial class DataGridView : UserControl, IGridWindow
             }
             else
             {
+                rows = MeasureWindow(visible.Height);
+                MeasureRows(rows.Item1 - 1, -1, visible.Height);
+                MeasureRows(rows.Item2 + 1, 1, visible.Height);
                 rows = MeasureWindow(visible.Height);
                 if (_content.Height != TotalHeight)
                 {

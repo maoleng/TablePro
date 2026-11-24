@@ -12,6 +12,16 @@ internal sealed record GridColors
 
     public Color Text { get; init; }
 
+    public Color Number { get; init; }
+
+    public Color Boolean { get; init; }
+
+    public Color Temporal { get; init; }
+
+    public Color Structured { get; init; }
+
+    public Color Binary { get; init; }
+
     public Color Placeholder { get; init; }
 
     public Color CutMark { get; init; }
@@ -61,6 +71,11 @@ internal sealed record GridColors
                 HighContrast = true,
                 Background = window,
                 Text = windowText,
+                Number = windowText,
+                Boolean = windowText,
+                Temporal = windowText,
+                Structured = windowText,
+                Binary = windowText,
                 Placeholder = gray,
                 CutMark = gray,
                 RowNumber = windowText,
@@ -88,6 +103,11 @@ internal sealed record GridColors
                 ? Themed("SolidBackgroundFillColorSecondary", 0xFFF3F3F3u, 0xFF1C1C1Cu)
                 : Themed("SolidBackgroundFillColorQuarternary", 0xFFFFFFFFu, 0xFF2C2C2Cu),
             Text = text,
+            Number = ThemeColors.FromArgb(dark ? 0xFFE5C07Bu : 0xFF805500u),
+            Boolean = ThemeColors.FromArgb(dark ? 0xFFC678DDu : 0xFF7C299Au),
+            Temporal = ThemeColors.FromArgb(dark ? 0xFF61AFEFu : 0xFF075D9Cu),
+            Structured = ThemeColors.FromArgb(dark ? 0xFF98C379u : 0xFF386B1Du),
+            Binary = ThemeColors.FromArgb(dark ? 0xFF56B6C2u : 0xFF006C78u),
             Placeholder = Themed("TextFillColorTertiary", 0x72000000u, 0x8BFFFFFFu),
             CutMark = Themed("TextFillColorTertiary", 0x72000000u, 0x8BFFFFFFu),
             RowNumber = Themed("TextFillColorSecondary", 0x9E000000u, 0xC5FFFFFFu),

@@ -199,7 +199,7 @@ public sealed class EditedGridData : IGridData
                         }
                         else if (edits.TryGetCell(row, dataColumn, out var pending))
                         {
-                            Add(block, pending, CellState.Modified);
+                            Add(block, pending, CellState.Modified, scratch.Get(row, dataColumn).ValueType);
                         }
                         else
                         {
@@ -255,7 +255,8 @@ public sealed class EditedGridData : IGridData
             }
         }
 
-        private static void Add(CellBlock block, PendingCell pending, CellState marks)
+        private static void Add(CellBlock block, PendingCell pending, CellState marks,
+            CellValueType valueType = CellValueType.Text)
         {
             switch (pending.Kind)
             {
@@ -266,7 +267,7 @@ public sealed class EditedGridData : IGridData
                     block.AddDefault(marks);
                     break;
                 default:
-                    block.AddTyped(pending.Text, marks);
+                    block.AddTyped(pending.Text, marks, valueType);
                     break;
             }
         }
