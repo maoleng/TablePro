@@ -94,7 +94,7 @@ jobs:
           SkipCoreBuild: "true"
           CargoProfile: dev
         run: |
-          dotnet build TablePro.slnx -p:Platform=x64
+          dotnet build TablePro.slnx
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           dotnet test --project tests/TablePro.DataGrid.Model.Tests
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
