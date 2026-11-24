@@ -1,0 +1,75 @@
+name: Windows preview build
+
+on:
+  push:
+    branches: [windows-preview-build]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build unpackaged Windows x64 app
+    runs-on: windows-2025
+    timeout-minutes: 150
+    env:
+      AWS_LC_SYS_PREBUILT_NASM: "1"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: "1.98"
+          targets: x86_64-pc-windows-msvc
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Publish the app
+        working-directory: windows
+        run: |
+          $publish = Join-Path $env:RUNNER_TEMP 'tablepro-win-x64'
+          dotnet publish src/TablePro.App -c Release -r win-x64 -p:Platform=x64 -p:CargoProfile=dev -o $publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          foreach ($file in 'TablePro.exe', 'tablepro_ffi.dll', 'tablepro-cli.exe') {
+            if (-not (Test-Path -LiteralPath (Join-Path $publish $file) -PathType Leaf)) {
+              throw "The publish is missing $file"
+            }
+          }
+          if (Test-Path -LiteralPath (Join-Path $publish 'TablePro.dll')) {
+            throw 'Expected a Native AOT executable'
+          }
+
+      - name: Record source and checksums
+        run: |
+          $publish = Join-Path $env:RUNNER_TEMP 'tablepro-win-x64'
+          Copy-Item -LiteralPath LICENSE -Destination $publish
+          $files = @(Get-ChildItem -LiteralPath $publish -File -Recurse | ForEach-Object {
+            @{
+              path = [IO.Path]::GetRelativePath($publish, $_.FullName)
+              sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+            }
+          })
+          @{
+            source = $env:GITHUB_REPOSITORY
+            commit = $env:GITHUB_SHA
+            platform = 'win-x64'
+            files = $files
+          } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $publish 'build-info.json')
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tablepro-windows-preview-x64
+          path: ${{ runner.temp }}/tablepro-win-x64/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 1
